@@ -1,3 +1,5 @@
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use crate::keyboard::input_source::{change_input_source, get_cur_session_input_source};
 use crate::{
     client::file_trait::FileManager,
     common::{make_fd_to_json, make_vec_fd_to_json},
@@ -6,11 +8,6 @@ use crate::{
     },
     input::*,
     ui_interface::{self, *},
-};
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use crate::{
-    common::get_default_sound_input,
-    keyboard::input_source::{change_input_source, get_cur_session_input_source},
 };
 use flutter_rust_bridge::{StreamSink, SyncReturn};
 #[cfg(feature = "plugin_framework")]
@@ -277,6 +274,12 @@ pub fn session_toggle_option(session_id: SessionID, value: String) {
     #[cfg(not(target_os = "ios"))]
     if sessions::get_session_by_session_id(&session_id).is_some() && value == "disable-clipboard" {
         crate::flutter::update_text_clipboard_required();
+    }
+    #[cfg(feature = "unix-file-copy-paste")]
+    if sessions::get_session_by_session_id(&session_id).is_some()
+        && value == config::keys::OPTION_ENABLE_FILE_COPY_PASTE
+    {
+        crate::flutter::update_file_clipboard_required();
     }
 }
 
@@ -1951,13 +1954,7 @@ pub fn main_hide_dock() -> SyncReturn<bool> {
 }
 
 pub fn main_has_file_clipboard() -> SyncReturn<bool> {
-    let ret = cfg!(any(
-        target_os = "windows",
-        all(
-            feature = "unix-file-copy-paste",
-            any(target_os = "linux", target_os = "macos")
-        )
-    ));
+    let ret = cfg!(any(target_os = "windows", feature = "unix-file-copy-paste",));
     SyncReturn(ret)
 }
 
